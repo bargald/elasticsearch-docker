@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: cron.Dockerfile
+    image: backup_cron
     depends_on:
       - elasticsearch
     networks:
