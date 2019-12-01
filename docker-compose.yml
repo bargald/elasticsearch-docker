@@ -1,13 +1,32 @@
 version: "3.7"
 services:
+  # backup-cron:
+  #   build:
+  #     context: .
+  #     dockerfile: curator-cron.Dockerfile
+  #   depends_on:
+  #     - elasticsearch
+  #   environment:
+  #     # SERVER_NAME: localhost
+  #     # ELASTICSEARCH_URL: http://elasticsearch1:9200/
+  #     SNAPSHOT_HOUR: 13
+  #     SNAPSHOT_MINUTE: 10
+  #     SNAPSHOT_REPOSITORY: s3-backup
+  #   networks:
+  #     - elastic
+
   elasticsearch:
-    build: .
+    build:
+      context: .
+      dockerfile: elastic-s3.Dockerfile
+    image: elasticsearch
     container_name: elasticsearch1
     restart: always
     environment:
       - node.name=elasticsearch1
       - cluster.name=docker-cluster
-      - cluster.initial_master_nodes=elasticsearch1
+      - discovery.seed_hosts=elasticsearch2
+      - cluster.initial_master_nodes=elasticsearch1,elasticsearch2
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - http.cors.enabled=true
@@ -24,19 +43,46 @@ services:
       - data01:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
-      - 9300:9300
     networks:
       - elastic
 
-  # elasticsearch2:
-  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.4.2
-  #   container_name: elasticsearch2
+  elasticsearch2:
+    image: elasticsearch
+    container_name: elasticsearch2
+    restart: always
+    environment:
+      - node.name=elasticsearch2
+      - cluster.name=docker-cluster
+      - discovery.seed_hosts=elasticsearch1
+      - cluster.initial_master_nodes=elasticsearch1,elasticsearch2
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - http.cors.enabled=true
+      - http.cors.allow-origin=*
+      - network.host=_eth0_
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data02:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+    depends_on:
+      - elasticsearch
+
+  # elasticsearch3:
+  #   image: elasticsearch
+  #   container_name: elasticsearch3
   #   restart: always
   #   environment:
-  #     - node.name=elasticsearch2
+  #     - node.name=elasticsearch3
   #     - cluster.name=docker-cluster
-  #     - cluster.initial_master_nodes=elasticsearch1
-  #     - "discovery.seed_hosts=elasticsearch1"
+  #     - discovery.seed_hosts=elasticsearch1,elasticsearch2
+  #     - cluster.initial_master_nodes=elasticsearch1,elasticsearch2,elasticsearch3
   #     - bootstrap.memory_lock=true
   #     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
   #     - http.cors.enabled=true
@@ -49,34 +95,13 @@ services:
   #     memlock:
   #       soft: -1
   #       hard: -1
-  #   ports:
-  #     - 9201:9200
-  #   volumes:
-  #     - data02:/usr/share/elasticsearch/data
-  #   networks:
-  #     - elastic
-  # es03:
-  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.4.2
-  #   container_name: es03
-  #   restart: always
-  #   environment:
-  #     - node.name=es03
-  #     - cluster.name=es-docker-cluster
-  #     - discovery.seed_hosts=es01,es02
-  #     - cluster.initial_master_nodes=es01,es02,es03
-  #     - bootstrap.memory_lock=true
-  #     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-  #   ulimits:
-  #     nofile:
-  #       soft: 65536
-  #       hard: 65536
-  #     memlock:
-  #       soft: -1
-  #       hard: -1
   #   volumes:
   #     - data03:/usr/share/elasticsearch/data
   #   networks:
   #     - elastic
+  #   depends_on:
+  #     - elasticsearch
+
   kibana:
     image: docker.elastic.co/kibana/kibana:7.4.2
     container_name: kibana
@@ -94,16 +119,14 @@ services:
       - 5601:5601
     networks:
       - elastic
-  # s3:
-  #   build: .
 
 volumes:
   data01:
     driver: local
   data02:
     driver: local
-  # data03:
-  #   driver: local
+  data03:
+    driver: local
 networks:
   elastic:
     driver: bridge
