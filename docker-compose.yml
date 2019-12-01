@@ -1,19 +1,13 @@
 version: "3.7"
 services:
-  # backup-cron:
-  #   build:
-  #     context: .
-  #     dockerfile: curator-cron.Dockerfile
-  #   depends_on:
-  #     - elasticsearch
-  #   environment:
-  #     # SERVER_NAME: localhost
-  #     # ELASTICSEARCH_URL: http://elasticsearch1:9200/
-  #     SNAPSHOT_HOUR: 13
-  #     SNAPSHOT_MINUTE: 10
-  #     SNAPSHOT_REPOSITORY: s3-backup
-  #   networks:
-  #     - elastic
+  backup-cron:
+    build:
+      context: .
+      dockerfile: cron.Dockerfile
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
 
   elasticsearch:
     build:
